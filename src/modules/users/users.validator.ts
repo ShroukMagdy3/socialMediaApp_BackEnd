@@ -1,6 +1,7 @@
 import { Type } from "@aws-sdk/client-s3";
 import { Types } from "mongoose";
 import z, { email } from "zod";
+import { generalRules } from "../../utilities/generalRules";
 
 export enum flagType {
   all="all",
@@ -138,6 +139,17 @@ export const unfreezeSchema ={
   })
 }
 
+export const sendRequestSchema ={
+  params:z.strictObject({
+    userId:generalRules.id
+  }).required()
+}
+export const acceptRequestSchema ={
+  params:z.strictObject({
+    requestId:generalRules.id
+  }).required()
+}
+
 
 
 
@@ -157,3 +169,5 @@ export type confirmLoginType = z.infer<typeof confirmLoginSchema.body>;
 export type confirmEnable2FASchemaType = z.infer<typeof confirmEnable2FASchema.body>;
 export type freezeSchemaType = z.infer<typeof freezeSchema.params>;
 export type unfreezeSchemaType = z.infer<typeof unfreezeSchema.params>;
+export type sendRequestSchemaType = z.infer<typeof sendRequestSchema.params>;
+export type acceptRequestSchemaType = z.infer<typeof acceptRequestSchema.params>;

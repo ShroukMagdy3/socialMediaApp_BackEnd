@@ -1,4 +1,4 @@
-import jwt, { decode, JwtPayload } from "jsonwebtoken";
+import jwt, {  JwtPayload } from "jsonwebtoken";
 import { AppError } from "./classError";
 import { UserRepository } from "../DB/Repositories/user.repository";
 import userModel from "../DB/models/users.model";

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import US from './users.service'
 import { validation } from "../../middleware/validation";
-import { confirmEmailSchema, confirmEnable2FASchema, confirmLoginSchema, forgetPassSchema, freezeSchema, loginWithGmailSchema, LogOutSchema, resetPassSchema, signInSchema, signUpSchema, unfreezeSchema, updateEmailSchema, updateInfoSchema, updatePasswordSchema } from "./users.validator";
+import { acceptRequestSchema, confirmEmailSchema, confirmEnable2FASchema, confirmLoginSchema, forgetPassSchema, freezeSchema, loginWithGmailSchema, LogOutSchema, resetPassSchema, sendRequestSchema, signInSchema, signUpSchema, unfreezeSchema, updateEmailSchema, updateInfoSchema, updatePasswordSchema } from "./users.validator";
 import { Authentication } from "../../middleware/authentication";
 import { TokenType } from "../../utilities/token";
 import { Authorization } from "../../middleware/authorization";
@@ -35,6 +35,8 @@ userRouter.post("/confirmLogin" ,validation(confirmLoginSchema), US.confirmLogin
 userRouter.post("/upload" ,Authentication() , US.uploadProfileImage);
 userRouter.delete("/freezeAccount{/:userId}", Authentication() , validation(freezeSchema) , US.freezeAccount )
 userRouter.delete("/unFreezeAccount/:userId", Authentication() , Authorization({role:[roleType.admin , roleType.superAdmin]}) , validation(unfreezeSchema) , US.unfreezeAccount )
+userRouter.post("/sendRequest/:userId" , Authentication() , validation(sendRequestSchema) , US.sendRequest)
+userRouter.patch("/acceptRequest/:requestId" , Authentication() , validation(acceptRequestSchema) , US.acceptRequest)
 
 
 

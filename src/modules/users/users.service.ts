@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 
 import {
+  acceptRequestSchemaType,
   confirmEmailSchemaType,
   flagType,
   forgetPassSchemaType,
@@ -8,6 +9,7 @@ import {
   loginWithGmailSchemaType,
   LogOutSchemaType,
   resetPassSchemaType,
+  sendRequestSchemaType,
   signInSchemaType,
   signUpSchemaType,
   unfreezeSchemaType,
@@ -29,11 +31,15 @@ import { Compare, Hash } from "../../utilities/hash";
 import { uploadWithSignedUrl } from "../../utilities/s3.config";
 import { PostRepository } from "../../DB/Repositories/posts.repository";
 import PostModel from "../../DB/models/post.model";
+import FriendModel, { friendSchema } from "../../DB/models/friends.model";
+import { FriendRepository } from "../../DB/Repositories/friends.repository";
+import { Types } from "mongoose";
 
 class UserService {
   private _userModel = new UserRepository(userModel);
   private _revokeTokenModel = new revokeTokenRepository(revokeTokenModel);
   private _postModel = new PostRepository(PostModel);
+  private _friendModel = new FriendRepository(FriendModel);
 
   signUp = async (req: Request, res: Response, next: NextFunction) => {
     const {
@@ -506,6 +512,52 @@ class UserService {
     }
     return res.status(200).json({ message:"success" , user })
   }
+   sendRequest = async (req:Request , res:Response , next:NextFunction) =>{
+    const {userId} = req.params as sendRequestSchemaType ;
+
+    if(userId == req?.user?._id.toString()){
+      throw new AppError("you can't send request to yourself" , 400)
+    }
+    const user=  await this._userModel.findOne({_id:userId});
+    if(!user){
+      throw new AppError("user not found" , 404);
+    }
+
+    const checkFriend = await this._friendModel.findOne({
+      sendBy: {$in:[req.user._id , userId]},
+      sendTo: {$in:[req.user._id , userId]},
+    })
+    if(checkFriend){
+      throw new AppError("request already sent");
+    }
+    const friend = await this._friendModel.create({
+      sendBy:req?.user._id,
+      sendTo:userId as unknown as Types.ObjectId
+    })
+    return res.status(200).json({ message:"sent successfully" ,friend  })
+  }
+
+  acceptRequest = async (req:Request , res:Response , next:NextFunction) =>{
+    const {requestId} = req.params as acceptRequestSchemaType;
+     
+    const request =  await this._friendModel.findOneAndUpdate(
+      { _id:requestId ,
+        sendTo:req.user._id,
+        acceptedAt:{$exists :false}
+      },{
+        acceptedAt:Date.now()
+      },{
+        new:true
+      });
+    if(!request){
+      throw new AppError("you didn't send any request" , 404);
+    }
+
+   
+    return res.status(200).json({ message:"Accepted successfully" ,request  })
+  }
+  
+
 
   
 
