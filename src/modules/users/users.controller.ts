@@ -6,7 +6,9 @@ import { Authentication } from "../../middleware/authentication";
 import { TokenType } from "../../utilities/token";
 import { Authorization } from "../../middleware/authorization";
 import { roleType } from "../../DB/models/users.model";
+import chatRouter from "../chats/chat.controller";
 const userRouter = Router()
+userRouter.use("/:userId/chat" , chatRouter)
 
 userRouter.post("/signUp", validation(signUpSchema) , US.signUp )
 userRouter.patch("/confirmEmail", validation(confirmEmailSchema) , US.confirmEmail )

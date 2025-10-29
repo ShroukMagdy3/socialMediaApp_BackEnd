@@ -31,9 +31,12 @@ import { Compare, Hash } from "../../utilities/hash";
 import { uploadWithSignedUrl } from "../../utilities/s3.config";
 import { PostRepository } from "../../DB/Repositories/posts.repository";
 import PostModel from "../../DB/models/post.model";
-import FriendModel, { friendSchema } from "../../DB/models/friends.model";
+import FriendModel, {
+  friendSchema,
+  IFriend,
+} from "../../DB/models/friends.model";
 import { FriendRepository } from "../../DB/Repositories/friends.repository";
-import { Types } from "mongoose";
+import { HydratedDocument, Types } from "mongoose";
 
 class UserService {
   private _userModel = new UserRepository(userModel);
@@ -134,8 +137,8 @@ class UserService {
     const user = await this._userModel.findOne({
       email,
       provider: providerType.system,
-      deletedAt:{$exists:false},
-      deletedBy:{$exists:false}
+      deletedAt: { $exists: false },
+      deletedBy: { $exists: false },
     });
     if (!user) {
       throw new AppError("this user not found or freezed ", 404);
@@ -166,7 +169,7 @@ class UserService {
           ? process.env.SIGNATURE_access_USER!
           : process.env.SIGNATURE_access_ADMIN!,
       options: {
-        expiresIn: 60 * 60,
+        expiresIn: "1d",
         jwtid: jwtId,
       },
     });
@@ -222,7 +225,15 @@ class UserService {
   };
 
   getProfile = async (req: Request, res: Response, next: NextFunction) => {
-    return res.status(200).json({ message: "success", user: req.user });
+    const userId = req.user._id;
+
+    const user = await this._userModel.findOne({ _id: userId } , undefined ,
+  { populate: { path: "friends", select: "fName lName profileImage"  } });
+    if (!user) {
+      throw new AppError("there is no user", 404);
+    }
+
+    return res.status(200).json({ message: "success", user });
   };
   LogOut = async (req: Request, res: Response, next: NextFunction) => {
     const { flag }: LogOutSchemaType = req.body;
@@ -454,7 +465,11 @@ class UserService {
       throw new AppError("Unauthorized", 401);
     }
     const user = await this._userModel.findOneAndUpdate(
-      { _id: userId  || req.user._id , deletedBy:{ $exists:false } , deletedAt:{ $exists:false } },
+      {
+        _id: userId || req.user._id,
+        deletedBy: { $exists: false },
+        deletedAt: { $exists: false },
+      },
       {
         deletedBy: req.user._id,
         changeCredentials: Date.now(),
@@ -468,12 +483,12 @@ class UserService {
   };
 
   unfreezeAccount = async (req: Request, res: Response, next: NextFunction) => {
-    const { userId }:unfreezeSchemaType = req.params as unfreezeSchemaType;
+    const { userId }: unfreezeSchemaType = req.params as unfreezeSchemaType;
     if (req.user.role !== roleType.admin) {
       throw new AppError("Unauthorized", 401);
     }
     const user = await this._userModel.findOneAndUpdate(
-      { _id: userId , deletedAt: { $exists: true }, deletedBy:req.user._id },
+      { _id: userId, deletedAt: { $exists: true }, deletedBy: req.user._id },
       {
         $unset: { deletedBy: "", deletedAt: "" },
         restoreBy: req.user._id,
@@ -485,87 +500,95 @@ class UserService {
     }
     return res.status(200).json({ message: "UnFreezed" });
   };
-   dashBoard = async (req: Request, res: Response, next: NextFunction) => {
+  dashBoard = async (req: Request, res: Response, next: NextFunction) => {
     const result = await Promise.allSettled([
-      this._userModel.find({filter:{}}),
-      this._postModel.find({filter:{}})
-    ])
+      this._userModel.find({ filter: {} }),
+      this._postModel.find({ filter: {} }),
+    ]);
 
-    return res.status(200).json({ message: "success" , result });
+    return res.status(200).json({ message: "success", result });
   };
-  updateRole = async (req:Request , res:Response , next:NextFunction) =>{
-    const {role :newRole } = req.body
-    const {userId} = req.params ;
+  updateRole = async (req: Request, res: Response, next: NextFunction) => {
+    const { role: newRole } = req.body;
+    const { userId } = req.params;
     // no one can update superAdmin
     // no one can update the same level
-    const denyRoles =[newRole , roleType.superAdmin];
-    if(req.user.role == roleType.admin){
+    const denyRoles = [newRole, roleType.superAdmin];
+    if (req.user.role == roleType.admin) {
       denyRoles.push(roleType.admin);
-      if(newRole === roleType.superAdmin){
+      if (newRole === roleType.superAdmin) {
         throw new AppError("unauthorized", 401);
       }
     }
-    const user = await this._userModel.findOneAndUpdate({_id:req.user._id , role:{ $nin:denyRoles} } ,{role:newRole} ,{new:true}
-    )
-    if(!user) {
-      throw new AppError("unauthorized" , 401);
+    const user = await this._userModel.findOneAndUpdate(
+      { _id: req.user._id, role: { $nin: denyRoles } },
+      { role: newRole },
+      { new: true }
+    );
+    if (!user) {
+      throw new AppError("unauthorized", 401);
     }
-    return res.status(200).json({ message:"success" , user })
-  }
-   sendRequest = async (req:Request , res:Response , next:NextFunction) =>{
-    const {userId} = req.params as sendRequestSchemaType ;
+    return res.status(200).json({ message: "success", user });
+  };
+  sendRequest = async (req: Request, res: Response, next: NextFunction) => {
+    const { userId } = req.params as sendRequestSchemaType;
 
-    if(userId == req?.user?._id.toString()){
-      throw new AppError("you can't send request to yourself" , 400)
+    if (userId == req?.user?._id.toString()) {
+      throw new AppError("you can't send request to yourself", 400);
     }
-    const user=  await this._userModel.findOne({_id:userId});
-    if(!user){
-      throw new AppError("user not found" , 404);
+    const user = await this._userModel.findOne({ _id: userId });
+    if (!user) {
+      throw new AppError("user not found", 404);
     }
 
     const checkFriend = await this._friendModel.findOne({
-      sendBy: {$in:[req.user._id , userId]},
-      sendTo: {$in:[req.user._id , userId]},
-    })
-    if(checkFriend){
+      sendBy: { $in: [req.user._id, userId] },
+      sendTo: { $in: [req.user._id, userId] },
+    });
+    if (checkFriend) {
       throw new AppError("request already sent");
     }
     const friend = await this._friendModel.create({
-      sendBy:req?.user._id,
-      sendTo:userId as unknown as Types.ObjectId
-    })
-    return res.status(200).json({ message:"sent successfully" ,friend  })
-  }
+      sendBy: req?.user._id,
+      sendTo: userId as unknown as Types.ObjectId,
+    });
+    return res.status(200).json({ message: "sent successfully", friend });
+  };
 
-  acceptRequest = async (req:Request , res:Response , next:NextFunction) =>{
-    const {requestId} = req.params as acceptRequestSchemaType;
-     
-    const request =  await this._friendModel.findOneAndUpdate(
-      { _id:requestId ,
-        sendTo:req.user._id,
-        acceptedAt:{$exists :false}
-      },{
-        acceptedAt:Date.now()
-      },{
-        new:true
-      });
-    if(!request){
-      throw new AppError("you didn't send any request" , 404);
+  acceptRequest = async (req: Request, res: Response, next: NextFunction) => {
+    const { requestId } = req.params as acceptRequestSchemaType;
+
+    const request = (await this._friendModel.findOneAndUpdate(
+      {
+        _id: requestId,
+        sendTo: req.user._id,
+        acceptedAt: { $exists: false },
+      },
+      {
+        acceptedAt: Date.now(),
+      },
+      { new: true }
+    )) as unknown as HydratedDocument<IFriend>;
+
+    if (!request) {
+      throw new AppError("you didn't send any request", 404);
     }
 
-   
-    return res.status(200).json({ message:"Accepted successfully" ,request  })
-  }
-  
+    await this._userModel.updateOne(
+      { _id: request.sendTo },
+      { $addToSet: { friends: request.sendBy } }
+    );
 
+    await this._userModel.updateOne(
+      { _id: request.sendBy },
+      { $addToSet: { friends: request.sendTo } }
+    );
 
-  
-
-
-
-
-
-
+    return res.status(200).json({
+      message: "Accepted successfully",
+      request,
+    });
+  };
 }
 
 export default new UserService();

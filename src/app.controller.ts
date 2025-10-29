@@ -15,7 +15,17 @@ import userRouter from "./modules/users/users.controller";
 import { connectionDB } from "./DB/connectionDB";
 import postRouter from "./modules/posts/posts.controller";
 const app: express.Application = express();
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
+import {
+  decodedTokenAndFetch,
+  getSignature,
+  TokenType,
+} from "./utilities/token";
+import { Authorization } from "./middleware/authorization";
+import { decode } from "punycode";
+import { IUser } from "./DB/models/users.model";
+import { HydratedDocument } from "mongoose";
+import { initialize } from "./modules/gateway/gateway";
 const port: string | number = process.env.PORT || 5000;
 const limiter = rateLimit({
   max: 10,
@@ -26,6 +36,8 @@ const limiter = rateLimit({
   statusCode: 429,
   legacyHeaders: false,
 });
+
+const connectionSockets = new Map<string, string>();
 
 const bootstrap = async () => {
   app.use(express.json());
@@ -51,10 +63,14 @@ const bootstrap = async () => {
       .status((err.cause as unknown as number) || 500)
       .json({ message: err.message, stack: err.stack });
   });
-  const server = app.listen(port, () => {
+  const server = app.listen(port , () => {
     console.log(`server is running on ${port}`);
   });
- 
+
+
+  initialize(server)
+
+
 };
 
 export default bootstrap;
