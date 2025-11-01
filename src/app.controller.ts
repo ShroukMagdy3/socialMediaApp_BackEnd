@@ -26,6 +26,7 @@ import { decode } from "punycode";
 import { IUser } from "./DB/models/users.model";
 import { HydratedDocument } from "mongoose";
 import { initialize } from "./modules/gateway/gateway";
+import chatRouter from "./modules/chats/chat.controller";
 const port: string | number = process.env.PORT || 5000;
 const limiter = rateLimit({
   max: 10,
@@ -43,9 +44,10 @@ const bootstrap = async () => {
   app.use(express.json());
   app.use(helmet());
   app.use(cors());
-  app.use(limiter);
+  // app.use(limiter);
   app.use("/api/user", userRouter);
   app.use("/api/post", postRouter);
+  app.use("/api/chat",chatRouter);
 
   app.get("/", (req: Request, res: Response, next: NextFunction) => {
     return res.status(200).json({ message: "welcome to my socialApp" });

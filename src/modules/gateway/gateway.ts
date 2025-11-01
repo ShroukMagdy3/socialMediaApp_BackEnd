@@ -13,7 +13,7 @@ import { ChatGateway } from "../chats/chat.gateway";
 export interface AuthenticationSocket extends Socket {
   user?: HydratedDocument<IUser>;
 }
-let connectionSockets = new Map<string, string[]>();
+export let connectionSockets = new Map<string, string[]>();
 
 export const disconnect = (socket: AuthenticationSocket) => {
   socket.on("disconnect", () => {
@@ -33,10 +33,11 @@ export const connect = (socket: AuthenticationSocket) => {
   connectionSockets.set(socket.user?._id.toString()! as string, currentSockets);
 };
 
+let io : Server |undefined = undefined ;
 export const initialize = (httpServer: httpServer) => {
 
     const chatGateway = new ChatGateway();
-  const io = new Server(httpServer, {
+   io = new Server(httpServer, {
     cors: {
       origin: "*",
     },
@@ -63,10 +64,17 @@ export const initialize = (httpServer: httpServer) => {
 
   io.on("connection", (socket: AuthenticationSocket) => {
     connect(socket);
-    chatGateway.register(socket)
+    chatGateway.register(socket , getIo())
     disconnect(socket);
   });
 
 
 
 };
+
+const getIo = ()=>{
+  if(!io) {
+    throw new AppError("io not initialized")
+  }
+  return io
+}

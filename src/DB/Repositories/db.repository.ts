@@ -71,7 +71,7 @@ export class DbRepository<TDocument> {
     filter: RootFilterQuery<TDocument>,
     update: UpdateQuery<TDocument>,
     option:QueryOptions<TDocument> | null = {new :true}
-  ): Promise<UpdateWriteOpResult | null> {
+  ): Promise<HydratedDocument<TDocument> | null> {
     return await this.model.findOneAndUpdate(filter, update , option);
   }
    async deleteOne(

@@ -15,7 +15,7 @@ export const validation = (schema: schemaType) => {
       if (!schema[key]) continue;
 
       if(req.file){
-        req.body.attachments = req.file
+        req.body.attachment = req.file
       }
        if(req?.files){
         req.body.attachments = req.files

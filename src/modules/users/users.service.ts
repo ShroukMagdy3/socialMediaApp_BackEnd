@@ -37,12 +37,15 @@ import FriendModel, {
 } from "../../DB/models/friends.model";
 import { FriendRepository } from "../../DB/Repositories/friends.repository";
 import { HydratedDocument, Types } from "mongoose";
+import { ChatModel } from "../../DB/models/chat.model";
+import { ChatRepository } from "../../DB/Repositories/chat.repository";
 
 class UserService {
   private _userModel = new UserRepository(userModel);
   private _revokeTokenModel = new revokeTokenRepository(revokeTokenModel);
   private _postModel = new PostRepository(PostModel);
   private _friendModel = new FriendRepository(FriendModel);
+  private _chatModel = new ChatRepository(ChatModel);
 
   signUp = async (req: Request, res: Response, next: NextFunction) => {
     const {
@@ -227,13 +230,21 @@ class UserService {
   getProfile = async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.user._id;
 
-    const user = await this._userModel.findOne({ _id: userId } , undefined ,
-  { populate: { path: "friends", select: "fName lName profileImage"  } });
+    const user = await this._userModel.findOne({ _id: userId }, undefined, {
+      populate: { path: "friends", select: "fName lName profileImage" },
+    });
     if (!user) {
       throw new AppError("there is no user", 404);
     }
+    const groups = await this._chatModel.find({
+      filter: {
+        participant: { $in: [req.user._id] },
+        group: { $exists: true },
+      },
+    });
 
-    return res.status(200).json({ message: "success", user });
+
+    return res.status(200).json({ message: "success", user, groups });
   };
   LogOut = async (req: Request, res: Response, next: NextFunction) => {
     const { flag }: LogOutSchemaType = req.body;

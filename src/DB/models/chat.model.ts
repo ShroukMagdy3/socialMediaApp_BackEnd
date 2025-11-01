@@ -1,4 +1,4 @@
-import mongoose, { models, Types } from "mongoose"
+import mongoose, { models, Schema, Types } from "mongoose"
 
 
 
@@ -8,8 +8,8 @@ import mongoose, { models, Types } from "mongoose"
 export interface IMessage {
     content : string
     createdBy:Types.ObjectId
-     createdAt:Date,
-     updatedAt:Date
+     createdAt?:Date,
+     updatedAt?:Date
 }
 
 const messageSchema = new mongoose.Schema<IMessage>({
@@ -33,7 +33,7 @@ export interface IChat {
 
 
     group?:string
-    groupImage:string
+    groupImage?:string | undefined
     roomId:string
 
     createdBy:Types.ObjectId
@@ -41,7 +41,7 @@ export interface IChat {
      updatedAt:Date
 }
 
-const chatSchema = new mongoose.Schema<IChat>({
+const chatSchema = new Schema<IChat>({
     message:[messageSchema],
     group:{
         type:String
