@@ -72,7 +72,7 @@ export const initialize = (httpServer: httpServer) => {
 
 };
 
-const getIo = ()=>{
+export const getIo = ()=>{
   if(!io) {
     throw new AppError("io not initialized")
   }

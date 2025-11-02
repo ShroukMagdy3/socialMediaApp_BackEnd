@@ -36,7 +36,7 @@ export const postSchema = new mongoose.Schema<IPost>({
  content:{type:String , minlength:5 , maxlength:10000, required:function(){ return this.attachments?.length === 0 }  } ,
     attachments:[{type:String }],
     assetFolderId :{type:String },
-    createdBy:[{type : mongoose.Schema.Types.ObjectId , ref:"User" , required:true}],
+    createdBy:{type : mongoose.Schema.Types.ObjectId , ref:"User" , required:true},
     tags:[{type : mongoose.Schema.Types.ObjectId , ref:"User"}],
     likes:[{type : mongoose.Schema.Types.ObjectId , ref:"User"}]   ,
 

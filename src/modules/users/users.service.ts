@@ -1,8 +1,10 @@
+import { roleType } from './../../DB/models/users.model';
 import { NextFunction, Request, Response } from "express";
 
 import {
   acceptRequestSchemaType,
   confirmEmailSchemaType,
+  createUserSchema,
   flagType,
   forgetPassSchemaType,
   freezeSchemaType,
@@ -17,7 +19,7 @@ import {
   updateInfoSchemaType,
   updatePasswordSchemaType,
 } from "./users.validator";
-import userModel, { providerType, roleType } from "../../DB/models/users.model";
+import userModel, { providerType } from "../../DB/models/users.model";
 import { UserRepository } from "../../DB/Repositories/user.repository";
 import { AppError } from "../../utilities/classError";
 import { generateOtp } from "../../service/sendEmail";
@@ -39,6 +41,10 @@ import { FriendRepository } from "../../DB/Repositories/friends.repository";
 import { HydratedDocument, Types } from "mongoose";
 import { ChatModel } from "../../DB/models/chat.model";
 import { ChatRepository } from "../../DB/Repositories/chat.repository";
+import { GraphQLError } from "graphql";
+import { AuthenticationGraphQl } from "../../middleware/authentication";
+import { AuthorizationGraphQl } from "../../middleware/authorization";
+import { validationGQl } from '../../middleware/validation';
 
 class UserService {
   private _userModel = new UserRepository(userModel);
@@ -242,7 +248,6 @@ class UserService {
         group: { $exists: true },
       },
     });
-
 
     return res.status(200).json({ message: "success", user, groups });
   };
@@ -599,6 +604,41 @@ class UserService {
       message: "Accepted successfully",
       request,
     });
+  };
+  sayHi = () =>{
+    return `hiiiiiii`
+  }
+
+  // graphQl
+  createUser = async (parent: any, args: any , context:any) => {
+
+
+        
+
+    const { fName, lName, email, gender, password, phone, address, age } = args;
+
+    await validationGQl( createUserSchema.body  , args)
+    const existingUser = await this._userModel.findOne({ email });
+    if (existingUser) {
+      throw new GraphQLError("already Exist" ,{extensions : {message: "exists" ,statusCode:404 }
+      })
+    }
+    const hash = await Hash(password)
+
+
+    const newUser = await this._userModel.create({
+      fName,
+      lName,
+      email,
+      gender,
+      password:hash,
+      phone,
+      address,
+      age,
+    });
+    
+
+    return newUser ;
   };
 }
 

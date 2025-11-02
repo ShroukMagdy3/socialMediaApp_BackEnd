@@ -3,6 +3,7 @@ import { NextFunction, Request, Response } from "express";
 
 import { ZodType } from "zod";
 import { AppError } from "../utilities/classError";
+import { GraphQLError } from "graphql";
 
 type reqType = keyof Request;
 type schemaType = Partial<Record<reqType, ZodType>>;
@@ -30,4 +31,23 @@ export const validation = (schema: schemaType) => {
     }
     next();
   };
+};
+export const validationGQl = (schema: ZodType , args:any ) => {
+     
+      const res = schema.safeParse(args);
+      let validationError = [];
+      if (!res.success) {
+        validationError.push(res.error);
+      }
+    
+    if (validationError.length) {
+      throw new GraphQLError("validation error" ,{
+        extensions:{
+          message:"validation error",
+          http:{code :400},
+          error:JSON.parse(validationError as unknown as string)
+        }
+      });
+    }
+
 };

@@ -21,12 +21,13 @@ import {
   getSignature,
   TokenType,
 } from "./utilities/token";
-import { Authorization } from "./middleware/authorization";
-import { decode } from "punycode";
-import { IUser } from "./DB/models/users.model";
-import { HydratedDocument } from "mongoose";
 import { initialize } from "./modules/gateway/gateway";
 import chatRouter from "./modules/chats/chat.controller";
+import { graphql, GraphQLObjectType, GraphQLSchema, GraphQLString } from "graphql";
+
+import { createHandler } from "graphql-http/lib/use/express";
+import { schemaGQl } from "./modules/graphql/schema.gql";
+
 const port: string | number = process.env.PORT || 5000;
 const limiter = rateLimit({
   max: 10,
@@ -45,6 +46,22 @@ const bootstrap = async () => {
   app.use(helmet());
   app.use(cors());
   // app.use(limiter);
+
+ 
+
+app.post("/graphql", createHandler({ schema:schemaGQl , context:(req)=>({req}) }));
+
+
+
+
+
+
+
+
+
+
+
+
   app.use("/api/user", userRouter);
   app.use("/api/post", postRouter);
   app.use("/api/chat",chatRouter);

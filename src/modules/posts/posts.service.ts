@@ -8,6 +8,9 @@ import { deleteFiles, uploadFiles } from "../../utilities/s3.config";
 import { v4 as uuidv4 } from "uuid";
 import { actionEnum, likePostSchemaType } from "./posts.validator";
 import { UpdateQuery, UpdateWriteOpResult } from "mongoose";
+import { GraphQLError } from "graphql";
+import { AuthenticationGraphQl } from "../../middleware/authentication";
+import { getIo } from "../gateway/gateway";
 
 class PostService {
   private _userModel = new UserRepository(userModel);
@@ -17,8 +20,8 @@ class PostService {
   createPost = async (req: Request, res: Response, next: NextFunction) => {
     if (
       req.body.tags.length &&
-      (await this._userModel.find({filter:{ _id: { $in: req.body.tags }} })).length !==
-        req.body.tags.length
+      (await this._userModel.find({ filter: { _id: { $in: req.body.tags } } }))
+        .length !== req.body.tags.length
     ) {
       throw new AppError("invalid Tags ID");
     }
@@ -42,7 +45,7 @@ class PostService {
     if (!post) {
       await deleteFiles({ urls: attachments });
       throw new AppError("Failed to create Post!");
-    }    
+    }
     return res.status(201).json({ message: "Created", post });
   };
 
@@ -113,47 +116,96 @@ class PostService {
     if (req?.body?.tags?.length) {
       if (
         req?.body?.tags?.length &&
-        (await this._userModel.find({filter:{ _id: { $in: req.body.tags } }})).length !== req.body.tags.length
+        (
+          await this._userModel.find({
+            filter: { _id: { $in: req.body.tags } },
+          })
+        ).length !== req.body.tags.length
       ) {
         throw new AppError("invalid Tags ID");
       }
-      req.body.tags= post.tags;
+      req.body.tags = post.tags;
     }
     await post.save();
-    return res.status(200).json({message:"Updated" , post})
+    return res.status(200).json({ message: "Updated", post });
   };
-   getAllPost = async (req: Request, res: Response, next: NextFunction) => {
-      let { page = 1, limit = 5 } = req.query as unknown as {
-        page: number;
-        limit: number;
-      };
-  
-      if (page <= 0) page = 1;
-      page = page * 1 || 1;
-      const skip = (page - 1) * limit;
-      const { docs, currentPage, numberOfDocument, numberOfPages } =
-        await this._postModel.paginate({ filter: {}, query: { page, limit } });
-        const posts = await this._postModel.find({
-           filter:{}  ,
-           options: { 
-             populate:[
-              {path : "comments" } 
-            ] }
-          })
-      return res
-        .status(201)
-        .json({
-          message: "Created",
-          page: currentPage,
-          numberOfPages,
-          numberOfDocument,
-          posts: posts,
-        });
+  getAllPost = async (req: Request, res: Response, next: NextFunction) => {
+    let { page = 1, limit = 5 } = req.query as unknown as {
+      page: number;
+      limit: number;
     };
-  
 
+    if (page <= 0) page = 1;
+    page = page * 1 || 1;
+    const skip = (page - 1) * limit;
+    const { docs, currentPage, numberOfDocument, numberOfPages } =
+      await this._postModel.paginate({ filter: {}, query: { page, limit } });
+    const posts = await this._postModel.find({
+      filter: {},
+      options: {
+        populate: [{ path: "comments" }],
+      },
+    });
+    return res.status(201).json({
+      message: "Created",
+      page: currentPage,
+      numberOfPages,
+      numberOfDocument,
+      posts: posts,
+    });
+  };
 
+  // =====graphQl ===========
 
+  getPosts = async (parent: any, args: any) => {
+    const posts = await this._postModel.find({ filter: {} });
+    if (posts.length == 0) {
+      throw new GraphQLError("no posts yet");
+    }
+    return posts;
+  };
+
+  likePostGQL = async (parent: any, args: any, context: any) => {
+    const { user } = await AuthenticationGraphQl(
+      context.req.headers.authorization
+    );
+    const { postId, action } = args;
+    let updateQuery: UpdateQuery<IPost> = {
+      $addToSet: { likes: user?._id },
+    };
+
+    if (action === actionEnum.unlike) {
+      updateQuery = { $pull: { likes: user?._id } };
+    }
+
+    const post = await this._postModel.findOneAndUpdate(
+      {
+        _id: postId,
+        $or: [
+          { availability: AvailabilityEnum.public },
+          { availability: AvailabilityEnum.private, createdBy: user._id },
+          {
+            availability: AvailabilityEnum.friends,
+            createdBy: { $in: [user?.friends || [], user._id] },
+          },
+        ],
+      },
+      updateQuery,
+      { new: true }
+    );
+
+    if (!post) {
+      throw new GraphQLError("this not found", {
+        extensions: { message: "this post not found", statusCode: 404 },
+      });
+    }
+    getIo().emit("postLiked", {
+      postId,
+      likedBy: user._id,
+    });
+
+    return post;
+  };
 }
 
 export default new PostService();
