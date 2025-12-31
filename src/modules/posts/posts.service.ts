@@ -5,10 +5,14 @@ import { PostRepository } from "../../DB/Repositories/posts.repository";
 import PostModel, { AvailabilityEnum, IPost } from "../../DB/models/post.model";
 import { AppError } from "../../utilities/classError";
 import { deleteFiles, uploadFiles } from "../../utilities/s3.config";
-import { v4 as uuidv4 } from "uuid";
-import { actionEnum, likePostSchemaType } from "./posts.validator";
+import {
+  actionEnum,
+  freezeSchemaType,
+  likePostSchemaType,
+} from "./posts.validator";
 import { UpdateQuery, UpdateWriteOpResult } from "mongoose";
 import { GraphQLError } from "graphql";
+import { v4 as uuidv4 } from "uuid";
 import { AuthenticationGraphQl } from "../../middleware/authentication";
 import { getIo } from "../gateway/gateway";
 
@@ -129,6 +133,7 @@ class PostService {
     await post.save();
     return res.status(200).json({ message: "Updated", post });
   };
+
   getAllPost = async (req: Request, res: Response, next: NextFunction) => {
     let { page = 1, limit = 5 } = req.query as unknown as {
       page: number;
@@ -155,8 +160,84 @@ class PostService {
     });
   };
 
-  // =====graphQl ===========
+  freezePost = async (req: Request, res: Response, next: NextFunction) => {
+    const { postId } = req.params as freezeSchemaType;
+    const post = await this._postModel.findOneAndUpdate(
+      { _id: postId, createdBy: req.user._id, deletedAt: { $exists: false } },
+      {
+        $set: { deletedAt: new Date(), deletedBy: req.user._id },
+        $unset: { restoreBy: "", restoreAt: "" },
+      },
+      { new: true }
+    );
+    if (!post) {
+      throw new AppError(
+        "No post or already freezed",
+        404
+      );
+    }
+    return res.status(200).json({ message: "freezed" });
+  };
 
+  unfreezePost = async (req: Request, res: Response, next: NextFunction) => {
+    const { postId } = req.params as freezeSchemaType;
+    const post = await this._postModel.findOneAndUpdate(
+      { _id: postId, createdBy: req.user._id, deletedAt: { $exists: true } },
+      {
+        $set: { restoreAt: new Date(), restoreBy : req.user._id },
+        $unset: { deletedBy: "", deletedAt: "" },
+      },
+      { new: true }
+    );
+    if (!post) {
+      throw new AppError(
+        "No post or already unfreezed",
+        404
+      );
+    }
+    return res.status(200).json({ message: "unfreezed" });
+  };
+  deletePost = async (req: Request, res: Response, next: NextFunction) => {
+    const { postId } = req.params as freezeSchemaType;
+    const post = await this._postModel.findOne(
+     {_id :postId , createdBy:req.user._id});
+    if (!post) {
+      throw new AppError(
+        "No post or already deleted or unauthorized",
+        404
+      );
+    }
+    await this._postModel.deleteOne({_id :postId , createdBy:req.user._id})
+
+    return res.status(200).json({ message: "deleted"  });
+  };
+  getPost =async (req: Request, res: Response, next: NextFunction) => {
+    const { postId } = req.params as freezeSchemaType;
+    const post = await this._postModel.findOne(
+     {_id :postId ,$or: [
+      { createdBy: req.user._id },
+      { availability:AvailabilityEnum.public },
+      {
+        availability: AvailabilityEnum.friends,
+        createdBy: { $in: req.user.friends },
+      },
+    ], });
+    if (!post) {
+      throw new AppError(
+        "No post or you are not authorized or freezed",
+        404
+      );
+    }
+    return res.status(200).json({ message: "success" , post  });
+  };
+
+
+
+
+
+
+
+  // =====graphQl ===========
   getPosts = async (parent: any, args: any) => {
     const posts = await this._postModel.find({ filter: {} });
     if (posts.length == 0) {

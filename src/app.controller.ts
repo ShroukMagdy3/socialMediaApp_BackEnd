@@ -1,7 +1,7 @@
 import { config } from "dotenv";
 import path, { resolve } from "path";
-config({ path: resolve("./config/.env") });
-
+config({path: resolve("./config/.env")});
+//  path: resolve("./config/.env")
 import { pipeline } from "stream";
 import { promisify } from "util";
 import morgan from "morgan";
@@ -15,15 +15,8 @@ import userRouter from "./modules/users/users.controller";
 import { connectionDB } from "./DB/connectionDB";
 import postRouter from "./modules/posts/posts.controller";
 const app: express.Application = express();
-import { Server, Socket } from "socket.io";
-import {
-  decodedTokenAndFetch,
-  getSignature,
-  TokenType,
-} from "./utilities/token";
 import { initialize } from "./modules/gateway/gateway";
 import chatRouter from "./modules/chats/chat.controller";
-import { graphql, GraphQLObjectType, GraphQLSchema, GraphQLString } from "graphql";
 
 import { createHandler } from "graphql-http/lib/use/express";
 import { schemaGQl } from "./modules/graphql/schema.gql";
@@ -52,22 +45,12 @@ const bootstrap = async () => {
 app.post("/graphql", createHandler({ schema:schemaGQl , context:(req)=>({req}) }));
 
 
-
-
-
-
-
-
-
-
-
-
   app.use("/api/user", userRouter);
   app.use("/api/post", postRouter);
   app.use("/api/chat",chatRouter);
 
   app.get("/", (req: Request, res: Response, next: NextFunction) => {
-    return res.status(200).json({ message: "welcome to my socialApp" });
+    return res.status(200).json({ message: "welcome to my socialApp." });
   });
 
   await connectionDB();

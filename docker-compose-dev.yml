@@ -1,0 +1,27 @@
+version: '3.9'
+
+services:
+  node-service:
+    build: .
+    container_name: node-cont-dev
+    ports:
+      - "4000:3000"   
+    env_file:
+      - config/.env
+    volumes:
+      - ./:/socialApp     
+    working_dir: /socialApp
+    command: npm run start:dev
+    depends_on:
+      - mongo 
+
+  mongo:
+    image: mongo:7
+    container_name: social-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db  
+
+volumes:
+  mongo-data:

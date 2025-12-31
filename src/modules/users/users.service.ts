@@ -3,6 +3,8 @@ import { NextFunction, Request, Response } from "express";
 
 import {
   acceptRequestSchemaType,
+  blockUserSchemaType,
+  cancelRquestSchemaType,
   confirmEmailSchemaType,
   createUserSchema,
   flagType,
@@ -15,6 +17,7 @@ import {
   signInSchemaType,
   signUpSchemaType,
   unfreezeSchemaType,
+  unfriendSchemType,
   updateEmailSchemaType,
   updateInfoSchemaType,
   updatePasswordSchemaType,
@@ -577,13 +580,12 @@ class UserService {
     const request = (await this._friendModel.findOneAndUpdate(
       {
         _id: requestId,
-        sendTo: req.user._id,
+        sendBy: req.user._id,
         acceptedAt: { $exists: false },
       },
       {
         acceptedAt: Date.now(),
-      },
-      { new: true }
+      }
     )) as unknown as HydratedDocument<IFriend>;
 
     if (!request) {
@@ -605,9 +607,172 @@ class UserService {
       request,
     });
   };
-  sayHi = () =>{
-    return `hiiiiiii`
-  }
+
+  blockUser =async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user._id;                     
+    const { blockedUserId } = req.params as blockUserSchemaType;
+    if (!blockedUserId) {
+      throw new AppError("blockedUserId is required", 400);
+    }
+
+    if (userId.toString() === blockedUserId) {
+      return res.status(400).json({ message: "You cannot block yourself" });
+    }
+
+    const target = await this._userModel.findOne({_id:blockedUserId});
+    const user = await this._userModel.findOne({_id:userId});
+
+    if(!user){
+      throw new AppError("not found", 404)
+    }
+
+    if (!target) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    if (user?.blocked!.includes( new Types.ObjectId(blockedUserId))) {
+      return res.status(400).json({ message: "User already blocked" });
+    }
+    user?.blocked.push(new Types.ObjectId(blockedUserId));
+      user.friends = user?.friends!.filter(
+        id => id.toString() !== blockedUserId
+      );
+    target.friends = target?.friends!.filter(id => id !== userId);
+
+    await this._friendModel.deleteOne({
+      $or: [
+        { sendBy: userId, sendTo: blockedUserId },
+        { sendBy: blockedUserId, sendTo: userId },
+      ],
+    });
+    await user.save();
+
+    return res.status(200).json({ message: "User blocked successfully" });
+
+
+  };
+
+  unblockUser = async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user._id;
+    const {blockedUserId} = req.params as blockUserSchemaType;
+  
+    console.log(blockedUserId);
+    
+    if (!blockedUserId) {
+      throw new AppError("blockedUserId is required", 400);
+    }
+  
+    if (userId.toString() === blockedUserId) {
+      return res.status(400).json({ message: "You cannot unblock yourself" });
+    }
+  
+    const user = await this._userModel.findOne({ _id: userId });
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+  
+    const blockedObjectId = new Types.ObjectId(blockedUserId);
+  
+    if (!user.blocked?.includes(blockedObjectId)) {
+      return res.status(400).json({ message: "User is not blocked" });
+    }
+  
+    user.blocked = user.blocked.filter(
+      id => id.toString() !== blockedUserId
+    );
+  
+    await user.save();
+    return res.status(200).json({ message: "User unblocked successfully" });
+  };
+
+  cancelFriendRequest =async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user._id;
+    const { requestId } = req.params as cancelRquestSchemaType;
+  
+    if (!requestId) {
+      throw new AppError("requestId is required", 400);
+    }
+  
+    const request = await this._friendModel.findOne({_id:requestId});
+  
+    if (!request) {
+      throw new AppError("Friend request not found", 404);
+    }
+
+    const isAllowed =
+      request.sendBy.toString() === userId.toString() ||
+      request.sendTo.toString() === userId.toString();
+  
+    if (!isAllowed) {
+      throw new AppError("Not authorized to delete this request", 403);
+    }
+  
+    await this._friendModel.deleteOne({ _id: requestId });
+  
+    return res.status(200).json({
+      message: "Friend request deleted successfully",
+    });
+  };
+
+  unfriend =async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user._id;
+    const { friendId } = req.params as unfriendSchemType;
+  
+    if (!friendId) {
+      throw new AppError("friendId is required", 400);
+    }
+  
+    const friendship = await this._friendModel.findOne({$or: [
+      { sendBy: userId, sendTo: friendId },
+      { sendBy: friendId, sendTo: userId },
+    ]});
+  
+    if (!friendship || !friendship.acceptedAt) {
+      throw new AppError("Friendship not found", 404);
+    }
+  
+    const isUserSender =
+      friendship.sendBy.toString() === userId.toString();
+    const isUserReceiver =
+      friendship.sendTo.toString() === userId.toString();
+  
+    if (!isUserSender && !isUserReceiver) {
+      throw new AppError("Not authorized", 403);
+    }
+  
+    const targetUserId = isUserSender
+      ? friendship.sendTo
+      : friendship.sendBy;
+
+    await this._friendModel.deleteOne(
+      {$or: [
+      { sendBy: userId, sendTo: friendId },
+      { sendBy: friendId, sendTo: userId },
+      ]}
+  );
+
+    await this._userModel.findOneAndUpdate(
+      userId,
+      { $pull: { friends: targetUserId } }
+    );
+    
+    await this._userModel.findOneAndUpdate(
+      targetUserId,
+      { $pull: { friends: userId } }
+    );
+
+  
+    return res.status(200).json({
+      message: "Unfriended successfully",
+    })
+  };
+
+
+
+  
+
+
+
 
   // graphQl
   createUser = async (parent: any, args: any , context:any) => {

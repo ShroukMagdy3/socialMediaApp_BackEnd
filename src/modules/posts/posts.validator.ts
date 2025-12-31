@@ -1,6 +1,8 @@
+
 import z from "zod";
 import { AllowCommentEnum, AvailabilityEnum } from "../../DB/models/post.model";
 import { generalRules } from "../../utilities/generalRules";
+import { Types } from "mongoose";
 
 
 export enum actionEnum {
@@ -10,7 +12,7 @@ export enum actionEnum {
 export const createPostSchema ={
     body:z.strictObject({
         content:z.string().min(5).max(10000).optional(),
-        attachments :z.array(generalRules.file).min(2).optional(),
+        attachments :z.array(generalRules.file).min(1).optional(),
         assetFolderId :z.string().optional(),
 
         AllowComment:z.enum(AllowCommentEnum).default(AllowCommentEnum.allow).optional(),
@@ -45,9 +47,7 @@ export const likePostSchema ={
 export const updateSchema ={
     body:z.strictObject({
         content:z.string().min(5).max(10000).optional(),
-        attachments :z.array(z.any()).min(2).optional(),
-        assetFolderId :z.string().optional(),
-
+        attachments :z.array(generalRules.file).optional(),
         AllowComment:z.enum(AllowCommentEnum).default(AllowCommentEnum.allow).optional(),
         Availability:z.enum(AvailabilityEnum).default(AvailabilityEnum.public).optional(),
 
@@ -66,7 +66,18 @@ export const updateSchema ={
         }
     })
 }
+export const freezeSchema ={
+    params:z.strictObject({
+        postId:z.string()
+      }).refine((value) =>{
+        return value.postId ? Types.ObjectId.isValid(value.postId) :true
+      },{
+        message:"post ID is required",
+        path: ["PostId"]
+      })
+}
 
 
 export type likePostSchemaType = z.infer<typeof likePostSchema.params>;
 export type updateSchemaType = z.infer<typeof updateSchema.body>;
+export type freezeSchemaType = z.infer<typeof freezeSchema.params>;

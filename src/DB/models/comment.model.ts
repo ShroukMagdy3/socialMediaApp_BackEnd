@@ -10,7 +10,7 @@ export interface IComment {
   attachments?: string[];
   assetFolderId?: string;
   createdBy: mongoose.Types.ObjectId | string;
-  postId: mongoose.Types.ObjectId;
+  postId: mongoose.Types.ObjectId | string;
 
   refId: Types.ObjectId;
   onModel: OnModelEnum;
@@ -18,11 +18,6 @@ export interface IComment {
   tags?: mongoose.Types.ObjectId;
   likes?: mongoose.Types.ObjectId;
 
-  deletedAt: Date;
-  deletedBy: mongoose.Types.ObjectId;
-
-  restoreAt: Date;
-  restoreBy: mongoose.Types.ObjectId;
 }
 
 export const CommentSchema = new mongoose.Schema<IComment>(
@@ -37,25 +32,18 @@ export const CommentSchema = new mongoose.Schema<IComment>(
     },
     attachments: [{ type: String }],
     assetFolderId: { type: String },
-    createdBy: [
+    createdBy: 
       { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    ],
-     refId:[{type : mongoose.Schema.Types.ObjectId , refPath:"onModel" , required:true}],
-    onModel:[{type :String, enum:OnModelEnum , required:true}],
+     refId:{type : mongoose.Schema.Types.ObjectId , refPath:"onModel" , required:true},
+    onModel:{type :String, enum:OnModelEnum , required:true},
 
-    postId: [
+    postId: 
       { type: mongoose.Schema.Types.ObjectId, ref: "Post", required: true },
-    ],
 
 
     tags: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 
-    deletedAt: { type: Date },
-    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-
-    restoreAt: { type: Date },
-    restoreBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   {
     timestamps: true,

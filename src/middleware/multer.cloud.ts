@@ -1,8 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
-import multer, { FileFilterCallback } from "multer";
+import  { FileFilterCallback  } from "multer";
+import multer from "multer";
 import { AppError } from "../utilities/classError";
 import { Request , Response  } from "express";
-import os from 'os'
+
+import * as os from "os";
 
 export const validationFileType = {
   image: ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"],

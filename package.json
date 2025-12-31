@@ -4,7 +4,7 @@
   "main": "dist/index.js",
   "type": "commonjs",
   "scripts": {
-    "start:dev": "concurrently \"tsc --watch\" \"nodemon dist/index.js\""
+    "start:dev": "concurrently \"tsc --watch\" \"nodemon --legacy-watch dist/index.js\""
   },
   "author": "",
   "license": "ISC",
@@ -41,6 +41,8 @@
     "@types/helmet": "^0.0.48",
     "@types/morgan": "^1.9.10",
     "@types/multer": "^2.0.0",
-    "@types/uuid": "^10.0.0"
+    "@types/uuid": "^10.0.0",
+    "nodemon": "^3.1.11",
+    "typescript": "^5.9.3"
   }
 }

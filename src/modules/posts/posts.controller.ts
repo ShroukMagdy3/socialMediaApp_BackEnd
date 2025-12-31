@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { Authentication } from "../../middleware/authentication";
 import { validation } from "../../middleware/validation";
-import { createPostSchema, likePostSchema, updateSchema } from "./posts.validator";
+import { createPostSchema, freezeSchema, likePostSchema, updateSchema } from "./posts.validator";
 import PS from "./posts.service";
 import { MulterCloud, validationFileType } from "../../middleware/multer.cloud";
 import commentRouter from "../comments/comments.controller";
@@ -11,7 +11,7 @@ import commentRouter from "../comments/comments.controller";
 
  postRouter.post("/createPost"  ,
     Authentication() ,
-    MulterCloud({fileTypes:validationFileType.image}).array("attachments" , 2), 
+    MulterCloud({fileTypes:validationFileType.image}).array("attachments" ), 
     validation(createPostSchema) , PS.createPost )
 
     postRouter.patch("/react/:postId",Authentication() ,validation(likePostSchema) , PS.likePost)
@@ -23,6 +23,22 @@ import commentRouter from "../comments/comments.controller";
     postRouter.get("/getAllPosts" ,
        Authentication(),
         PS.getAllPost)
+
+    postRouter.put("/freezePost/:postId" ,
+       Authentication(),
+       validation(freezeSchema),
+        PS.freezePost)
+
+    postRouter.put("/unfreezePost/:postId" ,
+       Authentication(),
+       validation(freezeSchema),
+        PS.unfreezePost)
+    postRouter.delete("/delete/:postId" ,
+       Authentication(),
+       validation(freezeSchema),
+        PS.deletePost)
+
+        postRouter.get("/getPost/:postId" , Authentication(), validation(freezeSchema), PS.getPost)
  
 
  export default postRouter;

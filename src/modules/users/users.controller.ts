@@ -1,7 +1,7 @@
 import { Router } from "express";
 import US from './users.service'
 import { validation } from "../../middleware/validation";
-import { acceptRequestSchema, confirmEmailSchema, confirmEnable2FASchema, confirmLoginSchema, forgetPassSchema, freezeSchema, loginWithGmailSchema, LogOutSchema, resetPassSchema, sendRequestSchema, signInSchema, signUpSchema, unfreezeSchema, updateEmailSchema, updateInfoSchema, updatePasswordSchema } from "./users.validator";
+import { acceptRequestSchema, blockUserSchema, cancelRquestSchema, confirmEmailSchema, confirmEnable2FASchema, confirmLoginSchema, forgetPassSchema, freezeSchema, loginWithGmailSchema, LogOutSchema, resetPassSchema, sendRequestSchema, signInSchema, signUpSchema, unfreezeSchema, unfriendSchema, updateEmailSchema, updateInfoSchema, updatePasswordSchema } from "./users.validator";
 import { Authentication } from "../../middleware/authentication";
 import { TokenType } from "../../utilities/token";
 import { Authorization } from "../../middleware/authorization";
@@ -24,7 +24,8 @@ userRouter.put("/updateInfo",Authentication() , validation(updateInfoSchema), US
 userRouter.patch("/updateEmail",Authentication() , validation(updateEmailSchema), US.updateEmail )
 userRouter.get("/dasBoard",Authentication() , Authorization({role:[roleType.admin , roleType.superAdmin]}) , US.dashBoard )
 userRouter.patch("/updateRole/:userId",Authentication() , Authorization({role:[roleType.admin , roleType.superAdmin]}) , US.updateRole )
-
+userRouter.patch("/block/:blockedUserId", Authentication() , validation(blockUserSchema),US.blockUser )
+userRouter.patch("/unblock/:blockedUserId", Authentication() ,validation(blockUserSchema) , US.unblockUser )
 
 
 // 2 step verification
@@ -39,6 +40,18 @@ userRouter.delete("/freezeAccount{/:userId}", Authentication() , validation(free
 userRouter.delete("/unFreezeAccount/:userId", Authentication() , Authorization({role:[roleType.admin , roleType.superAdmin]}) , validation(unfreezeSchema) , US.unfreezeAccount )
 userRouter.post("/sendRequest/:userId" , Authentication() , validation(sendRequestSchema) , US.sendRequest)
 userRouter.patch("/acceptRequest/:requestId" , Authentication() , validation(acceptRequestSchema) , US.acceptRequest)
+userRouter.delete(
+    "/friend-request/:requestId",
+    Authentication(),
+    validation(cancelRquestSchema),
+    US.cancelFriendRequest
+  );
+userRouter.delete(
+    "/unfriend/:friendId",
+    Authentication(),
+    validation(unfriendSchema),
+    US.unfriend
+  );
 
 
 

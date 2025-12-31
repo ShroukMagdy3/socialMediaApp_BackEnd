@@ -1,3 +1,5 @@
+
+
 import { Type } from "@aws-sdk/client-s3";
 import { Types } from "mongoose";
 import z, { email } from "zod";
@@ -149,6 +151,17 @@ export const acceptRequestSchema ={
     requestId:generalRules.id
   }).required()
 }
+export const blockUserSchema ={
+  params:z.strictObject({
+    blockedUserId:generalRules.id
+  }).required()
+}
+export const cancelRquestSchema ={
+  params:z.strictObject({
+    requestId:generalRules.id
+  }).required()
+}
+
 
 
 export const createUserSchema = {
@@ -178,6 +191,12 @@ export const createUserSchema = {
 };
 
 
+export const unfriendSchema ={
+  params:z.strictObject({
+    friendId: generalRules.id
+  }).required()
+}
+
 
 
 
@@ -198,3 +217,7 @@ export type freezeSchemaType = z.infer<typeof freezeSchema.params>;
 export type unfreezeSchemaType = z.infer<typeof unfreezeSchema.params>;
 export type sendRequestSchemaType = z.infer<typeof sendRequestSchema.params>;
 export type acceptRequestSchemaType = z.infer<typeof acceptRequestSchema.params>;
+export type blockUserSchemaType = z.infer<typeof blockUserSchema.params>;
+export type cancelRquestSchemaType = z.infer<typeof cancelRquestSchema.params>;
+export type unfriendSchemType = z.infer<typeof unfriendSchema.params>;
+
