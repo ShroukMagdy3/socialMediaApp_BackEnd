@@ -4,7 +4,7 @@ A full-featured **Social Media Application Backend** built with **Node.js, Expre
 
 ---
 
-## 🚀 Project Overview
+##  Project Overview
 
 This backend powers a social media platform where users can:
 
@@ -19,7 +19,7 @@ The project follows **clean architecture** principles with separation of concern
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 * **Node.js**
 * **Express.js**
@@ -271,5 +271,3 @@ This project is licensed under the **MIT License**.
 **Shrouk Magdy**
 
 ---
-
-⭐ If you like this project, feel free to give it a star on GitHub!
